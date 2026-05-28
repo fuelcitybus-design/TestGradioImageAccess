@@ -12,11 +12,33 @@ import gradio as gr
 # Replace these with your actual Azure App Service credentials
 USERNAME = "$oil-tank-refueling"
 PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
-# ---------------------
-
-# Your exact regional Kudu domain name
 KUDU_HOST = "oil-tank-refueling-e8a5atdqg9fnh2et.scm.eastasia-01.azurewebsites.net"
 # ---------------------
+
+def upload_image_to_kudu(image_path, custom_name):
+    if not image_path:
+        return "⚠️ Please select or drop an image first."
+
+    original_name = os.path.basename(image_path)
+    if custom_name and custom_name.strip():
+        _, extension = os.path.splitext(original_name)
+        target_file_name = f"{custom_name.strip()}{extension}"
+    else:
+        target_file_name = original_name
+    
+    url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{target_file_name}"
+    headers = {"If-Match": "*"}
+
+    try:
+        with open(image_path, 'rb') as img_file:
+            response = requests.put(url, headers=headers, data=img_file, auth=HTTPBasicAuth(USERNAME, PASSWORD), timeout=30)
+        if response.status_code in [200, 201]:
+            return f"✅ Success! Uploaded as '{target_file_name}' to Azure wwwroot."
+        else:
+            return f"❌ Failed: HTTP {response.status_code} - {response.text}"
+    except Exception as e:
+        return f"💥 Connection error: {str(e)}"
+
 
 # === NEW SUBSECTION: SEARCH AND EXTRACT FOR DISPLAY ===
 def fetch_and_display_image(search_filename):
