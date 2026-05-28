@@ -75,6 +75,7 @@ def fetch_and_display_image(search_filename):
     except Exception as e:
         return None, f"💥 Connection error: {str(e)}"
 
+
 # === NEW SUBSECTION: FETCH ALL IMAGES FOR GALLERY VIEW ===
 def load_all_stored_images():
     # Kudu returns directory structure as JSON when hitting the root path
@@ -123,6 +124,66 @@ def load_all_stored_images():
         
     except Exception as e:
         return [], f"💥 Error accessing file structures: {str(e)}"
+
+
+# === Extract image and rename it
+def find_and_rename_image(current_name, new_name):
+    if not current_name or not current_name.strip():
+        return None, "⚠️ Please enter the current filename to search."
+    if not new_name or not new_name.strip():
+        return None, "⚠️ Please enter a new name for the file."
+    
+    old_filename = current_name.strip()
+    
+    # Extract original extension from the current file to prevent breaking format
+    _, extension = os.path.splitext(old_filename)
+    new_filename = f"{new_name.strip()}{extension}"
+    
+    # Define URLs for Kudu VFS operations
+    old_file_url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{old_filename}"
+    new_file_url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{new_filename}"
+    
+    auth = HTTPBasicAuth(USERNAME, PASSWORD)
+    
+    try:
+        # STEP 1: Find the image using GET
+        get_response = requests.get(old_file_url, auth=auth, timeout=20)
+        
+        if get_response.status_code == 404:
+            return None, f"❌ File '{old_filename}' not found in site/wwwroot/."
+        elif get_response.status_code != 200:
+            return None, f"❌ Failed to fetch original file: HTTP {get_response.status_code}"
+            
+        # STEP 2: Upload the exact binary content under the new name using PUT
+        put_headers = {"If-Match": "*"}
+        put_response = requests.put(
+            new_file_url, 
+            headers=put_headers, 
+            data=get_response.content, 
+            auth=auth, 
+            timeout=20
+        )
+        
+        if put_response.status_code not in [200, 201, 204]:
+            return None, f"❌ Failed to save new file: HTTP {put_response.status_code}"
+            
+        # STEP 3: Delete the old file name using DELETE
+        delete_headers = {"If-Match": "*"}
+        delete_response = requests.delete(old_file_url, headers=delete_headers, auth=auth, timeout=20)
+        
+        if delete_response.status_code not in [200, 204]:
+            # If deletion fails, notify the user that it was copied but not renamed cleanly
+            return None, f"⚠️ Copied to '{new_filename}', but failed to delete original '{old_filename}'."
+            
+        # STEP 4: Cache the newly named image locally to display verification to user
+        temp_local_path = f"temp_renamed_{new_filename}"
+        with open(temp_local_path, "wb") as f:
+            f.write(get_response.content)
+            
+        return temp_local_path, f"✅ Success! Found '{old_filename}' and renamed it to '{new_filename}'."
+        
+    except Exception as e:
+        return None, f"💥 Connection error during rename operation: {str(e)}"
 
 
 # --- GRADIO INTERFACE SETUP ---
@@ -191,5 +252,34 @@ with gr.Blocks(title="Azure Image Uploader") as demo:
             outputs=[image_gallery, gallery_status]
         )
 
+    # Tab 4: Find and Rename
+    with gr.Tab("Find & Rename"):
+        gr.Markdown("### 🔍 Find a Server Image and Rename It")
+        gr.Markdown("This fetches the file, creates a copy under the new name, and safely cleans up the old file entry.")
+        
+        with gr.Row():
+            current_name_input = gr.Textbox(
+                label="Current Filename on Server (With Extension)", 
+                placeholder="e.g., photo.jpg"
+            )
+            new_name_input = gr.Textbox(
+                label="New Name (Without Extension)", 
+                placeholder="e.g., new-profile-banner"
+            )
+            
+        with gr.Row():
+            rename_btn = gr.Button("Find and Rename File", variant="primary")
+            
+        with gr.Row():
+            # Shows the image that was successfully renamed as a visual receipt
+            renamed_image_display = gr.Image(label="Renamed Image Preview", type="filepath")
+            rename_status = gr.Textbox(label="Operation Logs", interactive=False)
+            
+        # Link the interaction pipeline
+        rename_btn.click(
+            fn=find_and_rename_image,
+            inputs=[current_name_input, new_name_input],
+            outputs=[renamed_image_display, rename_status]
+        )
         
 app = gr.mount_gradio_app(app, demo, path="/")
