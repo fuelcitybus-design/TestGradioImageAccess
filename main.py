@@ -73,6 +73,55 @@ def fetch_and_display_image(search_filename):
     except Exception as e:
         return None, f"💥 Connection error: {str(e)}"
 
+# === NEW SUBSECTION: FETCH ALL IMAGES FOR GALLERY VIEW ===
+def load_all_stored_images():
+    # Kudu returns directory structure as JSON when hitting the root path
+    url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/"
+    
+    # We will pass a list of tuples containing (local_file_path, caption) to Gradio Gallery
+    gallery_items = []
+    
+    try:
+        response = requests.get(url, auth=HTTPBasicAuth(USERNAME, PASSWORD), timeout=30)
+        
+        if response.status_code != 200:
+            return [], f"❌ Failed to fetch directory contents: HTTP {response.status_code}"
+        
+        files_json = response.json()
+        
+        # Ensure directory template cleanup on restart
+        if not os.path.exists("kudu_cache"):
+            os.makedirs("kudu_cache")
+
+        for item in files_json:
+            # Skip items that are folders
+            if item.get("mime") == "inode/directory":
+                continue
+                
+            filename = item.get("name", "")
+            
+            # Filter only valid image extensions
+            if filename.lower().endswith(IMAGE_EXTENSIONS):
+                # Download each image to a local workspace cache folder
+                file_url = f"https://{KUDU_HOST}/api/vfs/data/{filename}"
+                file_response = requests.get(file_url, auth=HTTPBasicAuth(USERNAME, PASSWORD), timeout=15)
+                
+                if file_response.status_code == 200:
+                    local_cache_path = os.path.join("kudu_cache", filename)
+                    with open(local_cache_path, "wb") as f:
+                        f.write(file_response.content)
+                    
+                    # Store path and the original filename label
+                    gallery_items.append((local_cache_path, filename))
+        
+        if not gallery_items:
+            return [], "ℹ️ Connection successful, but no images were found in site/wwwroot/."
+            
+        return gallery_items, f"🖼️ Loaded {len(gallery_items)} images successfully from Kudu storage."
+        
+    except Exception as e:
+        return [], f"💥 Error accessing file structures: {str(e)}"
+
 
 # --- GRADIO INTERFACE SETUP ---
 with gr.Blocks(title="Azure Image Uploader") as demo:
@@ -115,6 +164,29 @@ with gr.Blocks(title="Azure Image Uploader") as demo:
             fn=fetch_and_display_image,
             inputs=search_input,
             outputs=[image_display, search_status]
+        )
+
+    # Tab 3: New Gallery Viewer
+    with gr.Tab("Storage Gallery"):
+        gr.Markdown("### 🖼️ Remote Cloud Storage Explorer")
+        load_btn = gr.Button("🔄 Refresh Cloud Gallery", variant="primary")
+        gallery_status = gr.Textbox(label="System Log", value="Click refresh to view stored assets.", interactive=False)
+        
+        # Grid layout to display the processed images neatly
+        image_gallery = gr.Gallery(
+            label="All Server Images", 
+            show_label=True, 
+            columns=[4], 
+            rows=[2], 
+            object_fit="contain", 
+            height="auto"
+        )
+        
+        # Clicking the button calls the directory crawler engine
+        load_btn.click(
+            fn=load_all_stored_images,
+            inputs=None,
+            outputs=[image_gallery, gallery_status]
         )
 
         
