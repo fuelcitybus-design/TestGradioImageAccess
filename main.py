@@ -3,31 +3,19 @@ import gradio as gr
 
 app = FastAPI()
 
-def greet(name, mood):
-    return f"Hello {name}, you seem {mood} today!"
-
-def analyze_image(image):
-    if image is None:
-        return "No image uploaded."
-    return f"Image uploaded with size: {image.size}"
+def save_and_return_path(image_path):
+    home_dir = os.environ.get("HOME", "/home")
+    save_path = os.path.join(home_dir, os.path.basename(image_path))
+    with open(image_path, "rb") as src, open(save_path, "wb") as dst:
+        dst.write(src.read())
+    return save_path  # Gradio File output lets user download
 
 with gr.Blocks() as demo:
-    gr.Markdown("## Sample Gradio Site")
+    gr.Markdown("## Upload and Access Images in Azure App Service")
+    img_input = gr.Image(type="filepath", label="Upload an image")
+    upload_btn = gr.Button("Save to Azure Storage")
+    file_output = gr.File(label="Download Saved Image")
 
-    with gr.Row():
-        name = gr.Textbox(label="Enter your name")
-        mood = gr.Dropdown(choices=["Happy", "Sad", "Excited"], label="Your mood")
-
-    greet_btn = gr.Button("Greet Me")
-    output = gr.Textbox(label="Greeting")
-
-    greet_btn.click(fn=greet, inputs=[name, mood], outputs=output)
-
-    with gr.Row():
-        img = gr.Image(type="pil", label="Upload an image")
-        analyze_btn = gr.Button("Analyze Image")
-        img_output = gr.Textbox(label="Image Info")
-
-    analyze_btn.click(fn=analyze_image, inputs=img, outputs=img_output)
+    upload_btn.click(save_and_return_path, inputs=img_input, outputs=file_output)
 
 app = gr.mount_gradio_app(app, demo, path="/")
