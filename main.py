@@ -47,7 +47,7 @@ def fetch_and_display_image(search_filename):
     filename = search_filename.strip()
     
     # Target the file URL directly in Kudu VFS
-    url = f"https://{KUDU_HOST}/api/vfs/site/data/{filename}"
+    url = f"https://{KUDU_HOST}/api/vfs/data/{filename}"
     
     try:
         # Request the raw binary content of the file
@@ -66,7 +66,7 @@ def fetch_and_display_image(search_filename):
             return temp_local_path, f"🔍 Found! Displaying '{filename}' from Azure."
         
         elif response.status_code == 404:
-            return None, f"❌ File '{filename}' not found in site/wwwroot/."
+            return None, f"❌ File '{filename}' not found in data/."
         else:
             return None, f"❌ Failed to fetch: HTTP {response.status_code}"
             
