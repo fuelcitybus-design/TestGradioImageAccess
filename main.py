@@ -28,7 +28,7 @@ def upload_image_to_kudu(image_path):
     
     # 2. Build the Kudu VFS URL targeting your specific directory
     # Note: Ensure 'images' directory exists, or change path to 'site/wwwroot/'
-    url = f"https://{APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/{target_file_name}"
+    url = f"oil-tank-refueling-e8a5atdqg9fnh2et.scm.eastasia-01.azurewebsites.net/api/vfs/site/wwwroot/{target_file_name}"
     
     headers = {
         "If-Match": "*"  # Overwrites the file if it already exists
