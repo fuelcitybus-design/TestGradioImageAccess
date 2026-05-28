@@ -250,6 +250,7 @@ def fetch_resize_and_upload(filename, target_width, target_height):
     except Exception as e:
         return None, f"💥 Connection error during resizing: {str(e)}"
 
+
 # --- GRADIO INTERFACE SETUP ---
 with gr.Blocks(title="Azure Image Uploader") as demo:
     gr.Markdown("# 🌐 Azure App Service Image Deployer")
