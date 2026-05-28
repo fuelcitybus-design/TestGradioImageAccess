@@ -2,60 +2,80 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-import gradio as gr
+import os
+import base64
 import requests
 from requests.auth import HTTPBasicAuth
-import os
+import gradio as gr
 
-# Replace with your App Service details
-APP_NAME = "oil-tank-refueling"   # e.g. oil-tank-refueling-e8a5atdqg9fnh2et
-USERNAME = "oil-tank-refueling\$oil-tank-refueling"
-PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
+# --- CONFIGURATION ---
+# Replace these with your actual Azure App Service credentials
+APP_NAME = "YOUR_APP_NAME"
+USERNAME = "YOUR_KUDU_USERNAME"
+PASSWORD = "YOUR_KUDU_PASSWORD"
+# ---------------------
 
-BASE_URL = f"https://oil-tank-refueling-e8a5atdqg9fnh2et.scm.eastasia-01.azurewebsites.net/filemanager/site/"
+def upload_image_to_kudu(image_path):
+    """
+    Takes the local temporary file path provided by Gradio,
+    extracts the file name, and uploads it to Azure Kudu VFS.
+    """
+    if not image_path:
+        return "⚠️ Please select or drop an image first."
 
-auth = HTTPBasicAuth(USERNAME, PASSWORD)
+    # 1. Extract the actual filename from the temporary path
+    target_file_name = os.path.basename(image_path)
+    
+    # 2. Build the Kudu VFS URL targeting your specific directory
+    # Note: Ensure 'images' directory exists, or change path to 'site/wwwroot/'
+    url = f"https://{APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/images/{target_file_name}"
+    
+    headers = {
+        "If-Match": "*"  # Overwrites the file if it already exists
+    }
 
-def upload_to_kudu(image_path):
-    file_name = os.path.basename(image_path)
-    with open(image_path, "rb") as f:
-        r = requests.put(BASE_URL + file_name, data=f, auth=auth)
-    if r.status_code in (200, 201):
-        return f"✅ Uploaded {file_name} successfully"
-    else:
-        return f"❌ Upload failed: {r.status_code} {r.text}"
+    try:
+        # 3. Open the image in binary mode and send it
+        with open(image_path, 'rb') as img_file:
+            response = requests.put(
+                url, 
+                headers=headers, 
+                data=img_file, 
+                auth=HTTPBasicAuth(USERNAME, PASSWORD),
+                timeout=30  # Prevents hanging on slow connections
+            )
+        
+        # 4. Handle response states
+        if response.status_code in [200, 201, 204]:
+            return f"✅ Success! Uploaded '{target_file_name}' to Kudu file manager."
+        elif response.status_code == 404:
+            return f"❌ Error 404: The target directory does not exist on Kudu. Ensure 'site/wwwroot/images/' exists."
+        else:
+            return f"❌ Failed: HTTP {response.status_code} - {response.text}"
+            
+    except Exception as e:
+        return f"💥 An unexpected error occurred: {str(e)}"
 
-def list_images():
-    r = requests.get(BASE_URL, auth=auth)
-    if r.status_code == 200:
-        files = [f["name"] for f in r.json() if f["name"].lower().endswith((".jpg", ".jpeg", ".png"))]
-        return files
-    return ["Error listing files"]
+# --- GRADIO INTERFACE SETUP ---
+with gr.Blocks(title="Kudu Image Uploader") as demo:
+    gr.Markdown("# 🌐 Azure App Service Image Deployer")
+    gr.Markdown("Upload an image below to programmatically send it straight to your Kudu File Manager.")
+    
+    with gr.Row():
+        # Input component set to 'filepath' to get the local system location of the image
+        image_input = gr.Image(type="filepath", label="Choose or Drop Image Here")
+        
+    with gr.Row():
+        submit_btn = gr.Button("Upload to Azure", variant="primary")
+        
+    with gr.Row():
+        output_text = gr.Textbox(label="Upload Status", interactive=False)
 
-def get_image(file_name):
-    r = requests.get(BASE_URL + file_name, auth=auth)
-    if r.status_code == 200:
-        temp_path = f"/tmp/{file_name}"
-        with open(temp_path, "wb") as f:
-            f.write(r.content)
-        return temp_path
-    return None
-
-with gr.Blocks() as demo:
-    gr.Markdown("## Upload Images to Azure App Service (Kudu Storage)")
-
-    with gr.Tab("Upload"):
-        img_input = gr.Image(type="filepath", label="Select an image")
-        upload_btn = gr.Button("Upload to Kudu (/home)")
-        upload_output = gr.Textbox(label="Result")
-        upload_btn.click(upload_to_kudu, inputs=img_input, outputs=upload_output)
-
-    with gr.Tab("Browse"):
-        list_btn = gr.Button("List Images in /home")
-        file_list = gr.Dropdown(label="Saved Images")
-        preview = gr.Image(label="Preview Selected Image")
-
-        list_btn.click(list_images, outputs=file_list)
-        file_list.change(get_image, inputs=file_list, outputs=preview)
+    # Link button click to the upload function
+    submit_btn.click(
+        fn=upload_image_to_kudu,
+        inputs=image_input,
+        outputs=output_text
+    )
 
 app = gr.mount_gradio_app(app, demo, path="/")
