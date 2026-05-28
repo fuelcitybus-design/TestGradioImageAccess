@@ -7,11 +7,11 @@ import os
 app = FastAPI()
 
 # Replace with your App Service details
-APP_NAME = "oil-tank-refueling"
+APP_NAME = "oil-tank-refueling-e8a5atdqg9fnh2et"
 USERNAME = "oil-tank-refueling\$oil-tank-refueling"
 PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
 
-BASE_URL = f"https://oil-tank-refueling.scm.azurewebsites.net/api/vfs/home/"
+BASE_URL = f"https://oil-tank-refueling-e8a5atdqg9fnh2et.scm.azurewebsites.net/api/vfs/home/"
 
 auth = HTTPBasicAuth(USERNAME, PASSWORD)
 
