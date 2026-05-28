@@ -10,7 +10,7 @@ import gradio as gr
 
 # --- CONFIGURATION ---
 # Replace these with your actual Azure App Service credentials
-APP_NAME = "oil-tank-refueling"
+APP_NAME = "oil-tank-refueling-e8a5atdqg9fnh2et"
 USERNAME = "$oil-tank-refueling"
 PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
 # ---------------------
