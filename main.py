@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import gradio as gr
+import os
 
 app = FastAPI()
 
