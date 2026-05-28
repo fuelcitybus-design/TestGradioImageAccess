@@ -10,9 +10,9 @@ import gradio as gr
 
 # --- CONFIGURATION ---
 # Replace these with your actual Azure App Service credentials
-APP_NAME = "YOUR_APP_NAME"
-USERNAME = "YOUR_KUDU_USERNAME"
-PASSWORD = "YOUR_KUDU_PASSWORD"
+APP_NAME = "oil-tank-refueling"
+USERNAME = "$oil-tank-refueling"
+PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
 # ---------------------
 
 def upload_image_to_kudu(image_path):
@@ -28,7 +28,7 @@ def upload_image_to_kudu(image_path):
     
     # 2. Build the Kudu VFS URL targeting your specific directory
     # Note: Ensure 'images' directory exists, or change path to 'site/wwwroot/'
-    url = f"https://{APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/images/{target_file_name}"
+    url = f"https://{APP_NAME}.scm.azurewebsites.net/api/vfs/site/wwwroot/{target_file_name}"
     
     headers = {
         "If-Match": "*"  # Overwrites the file if it already exists
