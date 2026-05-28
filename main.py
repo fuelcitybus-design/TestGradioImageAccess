@@ -140,8 +140,8 @@ def find_and_rename_image(current_name, new_name):
     new_filename = f"{new_name.strip()}{extension}"
     
     # Define URLs for Kudu VFS operations
-    old_file_url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{old_filename}"
-    new_file_url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{new_filename}"
+    old_file_url = f"https://{KUDU_HOST}/api/vfs/data/{old_filename}"
+    new_file_url = f"https://{KUDU_HOST}/api/vfs/data/{new_filename}"
     
     auth = HTTPBasicAuth(USERNAME, PASSWORD)
     
@@ -150,7 +150,7 @@ def find_and_rename_image(current_name, new_name):
         get_response = requests.get(old_file_url, auth=auth, timeout=20)
         
         if get_response.status_code == 404:
-            return None, f"❌ File '{old_filename}' not found in site/wwwroot/."
+            return None, f"❌ File '{old_filename}' not found in data/."
         elif get_response.status_code != 200:
             return None, f"❌ Failed to fetch original file: HTTP {get_response.status_code}"
             
