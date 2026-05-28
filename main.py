@@ -27,7 +27,7 @@ def upload_image_to_kudu(image_path):
     
     # 2. Build the correct VFS URL using your explicit regional host
     # This sends the file straight to 'site/wwwroot/'
-    url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{target_file_name}"
+    url = f"https://{KUDU_HOST}/api/vfs/data/{target_file_name}"
     
     headers = {
         "If-Match": "*"  # Overwrites the file if it already exists
