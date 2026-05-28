@@ -1,64 +1,56 @@
 from fastapi import FastAPI
 import gradio as gr
+import requests
+from requests.auth import HTTPBasicAuth
 import os
-import shutil
-from datetime import datetime
 
-app = FastAPI()
+# Replace with your App Service details
+APP_NAME = "oil-tank-refueling"
+USERNAME = "enginfo@citybus.com.hk"
+PASSWORD = "ESTS2026!"
 
-# Use /tmp directory which is always writable in Azure App Service
-STORAGE_DIR = "/tmp/app_storage"
+BASE_URL = f"https://oil-tank-refueling.scm.azurewebsites.net/api/vfs/home/"
 
-# Create storage directory if it doesn't exist
-os.makedirs(STORAGE_DIR, exist_ok=True)
+auth = HTTPBasicAuth(USERNAME, PASSWORD)
 
-def save_image(image_path):
-    try:
-        if image_path is None:
-            return "❌ No image selected"
-        
-        # Generate unique filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        original_name = os.path.basename(image_path)
-        name, ext = os.path.splitext(original_name)
-        new_filename = f"{name}_{timestamp}{ext}"
-        
-        save_path = os.path.join(STORAGE_DIR, new_filename)
-        
-        # Copy the file (don't move, as Gradio deletes the temp file)
-        shutil.copy(image_path, save_path)
-        
-        return f"✅ Saved to {new_filename}"
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
+def upload_to_kudu(image_path):
+    file_name = os.path.basename(image_path)
+    with open(image_path, "rb") as f:
+        r = requests.put(BASE_URL + file_name, data=f, auth=auth)
+    return f"Upload status: {r.status_code}"
 
 def list_images():
-    try:
-        files = [f for f in os.listdir(STORAGE_DIR) if f.lower().endswith((".jpg", ".jpeg", ".png", ".gif"))]
-        return files if files else ["No images found"]
-    except Exception as e:
-        return [f"Error: {str(e)}"]
+    r = requests.get(BASE_URL, auth=auth)
+    if r.status_code == 200:
+        files = [f["name"] for f in r.json() if f["name"].lower().endswith((".jpg", ".jpeg", ".png"))]
+        return files
+    return []
 
 def get_image(file_name):
-    if file_name and file_name != "No images found":
-        return os.path.join(STORAGE_DIR, file_name)
+    r = requests.get(BASE_URL + file_name, auth=auth)
+    if r.status_code == 200:
+        temp_path = f"/tmp/{file_name}"
+        with open(temp_path, "wb") as f:
+            f.write(r.content)
+        return temp_path
     return None
 
 with gr.Blocks() as demo:
-    gr.Markdown("## Azure App Service Storage: Upload & Browse Images")
+    gr.Markdown("## Manage Azure App Service Images via Kudu API")
 
     with gr.Tab("Upload"):
         img_input = gr.Image(type="filepath", label="Select an image")
-        upload_btn = gr.Button("Save to Azure Storage")
+        upload_btn = gr.Button("Upload to Azure Storage (/home)")
         upload_output = gr.Textbox(label="Result")
-        upload_btn.click(save_image, inputs=img_input, outputs=upload_output)
+        upload_btn.click(upload_to_kudu, inputs=img_input, outputs=upload_output)
 
     with gr.Tab("Browse"):
         list_btn = gr.Button("List Saved Images")
-        file_list = gr.Dropdown(label="Saved Images", choices=[])
+        file_list = gr.Dropdown(label="Saved Images")
         preview = gr.Image(label="Preview Selected Image")
-        
+
         list_btn.click(list_images, outputs=file_list)
         file_list.change(get_image, inputs=file_list, outputs=preview)
+
 
 app = gr.mount_gradio_app(app, demo, path="/")
