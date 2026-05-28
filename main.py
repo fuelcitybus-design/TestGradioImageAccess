@@ -3,42 +3,78 @@ from fastapi import FastAPI
 app = FastAPI()
 
 import gradio as gr
-from ftplib import FTP_TLS
+import ftplib
+import ssl
 import os
 
-# Replace with your App Service details
-APP_NAME = "oil-tank-refueling-e8a5atdqg9fnh2et"  # e.g. 
-USERNAME = "oil-tank-refueling\$oil-tank-refueling"
-PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
-
-# FTPS endpoint for Azure App Service
-FTPS_HOST = f"{APP_NAME}.ftp.azurewebsites.windows.net"
-FTPS_DIR = "/site/wwwroot"   # or "/home" depending on storage target
-
-def upload_image(image_path):
-    file_name = os.path.basename(image_path)
+def upload_to_azure_ftps(file, remote_path, ftps_host, username, password):
+    """Upload a file to Azure App Service via FTPS."""
     try:
-        ftps = FTP_TLS(FTPS_HOST)
-        ftps.login(USERNAME, PASSWORD)
-        ftps.prot_p()  # secure data connection
-        ftps.cwd(FTPS_DIR)
-
-        with open(image_path, "rb") as f:
-            ftps.storbinary(f"STOR {file_name}", f)
-
+        # Connect via FTPS (FTP over SSL)
+        ftps = ftplib.FTP_TLS()
+        ftps.connect(ftps_host, 990)
+        ftps.auth()
+        ftps.prot_p()  # Enable data channel encryption
+        ftps.login(username, password)
+        
+        # Navigate to the target directory
+        remote_dir = os.path.dirname(remote_path) or "/site/wwwroot/uploads"
+        try:
+            ftps.cwd(remote_dir)
+        except ftplib.error_perm:
+            # Create directory if it doesn't exist
+            ftps.mkd(remote_dir)
+            ftps.cwd(remote_dir)
+        
+        # Upload file
+        filename = os.path.basename(file.name)
+        with open(file.name, "rb") as f:
+            ftps.storbinary(f"STOR {filename}", f)
+        
         ftps.quit()
-        return f"✅ Uploaded {file_name} to {FTPS_DIR}"
+        return f"✅ Successfully uploaded '{filename}' to {remote_dir}/{filename}"
+    
     except Exception as e:
         return f"❌ Upload failed: {str(e)}"
 
-with gr.Blocks() as demo:
-    gr.Markdown("## Upload Images to Azure App Service via FTPS")
 
-    with gr.Tab("Upload"):
-        img_input = gr.Image(type="filepath", label="Select an image")
-        upload_btn = gr.Button("Upload via FTPS")
-        upload_output = gr.Textbox(label="Result")
-        upload_btn.click(upload_image, inputs=img_input, outputs=upload_output)
-
+# Gradio Interface
+with gr.Blocks(title="Azure FTPS Uploader") as demo:
+    gr.Markdown("# 📁 Azure App Service FTPS Image Uploader")
+    gr.Markdown("Upload images to your Azure App Service Kudu storage via FTPS.")
+    
+    with gr.Row():
+        with gr.Column():
+            ftps_host = gr.Textbox(
+                label="FTPS Host",
+                placeholder="waws-prod-xx-xxx.ftp.azurewebsites.windows.net"
+            )
+            username = gr.Textbox(
+                label="Username",
+                placeholder="your-app-name\\$your-app-name"
+            )
+            password = gr.Textbox(
+                label="Password",
+                type="password"
+            )
+            remote_path = gr.Textbox(
+                label="Remote Path",
+                value="/site/wwwroot/uploads",
+                placeholder="/site/wwwroot/uploads"
+            )
+            file_input = gr.File(
+                label="Select Image(s)",
+                file_types=["image"]
+            )
+            upload_btn = gr.Button("🚀 Upload", variant="primary")
+        
+        with gr.Column():
+            output = gr.Textbox(label="Result", lines=5)
+    
+    upload_btn.click(
+        fn=upload_to_azure_ftps,
+        inputs=[file_input, remote_path, ftps_host, username, password],
+        outputs=output
+    )
 
 app = gr.mount_gradio_app(app, demo, path="/")
