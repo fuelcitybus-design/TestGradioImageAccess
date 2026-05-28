@@ -26,7 +26,7 @@ def upload_image_to_kudu(image_path, custom_name):
     else:
         target_file_name = original_name
     
-    url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/{target_file_name}"
+    url = f"https://{KUDU_HOST}/api/vfs/data/{target_file_name}"
     headers = {"If-Match": "*"}
 
     try:
