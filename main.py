@@ -4,6 +4,8 @@ import requests
 from requests.auth import HTTPBasicAuth
 import os
 
+app = FastAPI()
+
 # Replace with your App Service details
 APP_NAME = "oil-tank-refueling"
 USERNAME = "enginfo@citybus.com.hk"
