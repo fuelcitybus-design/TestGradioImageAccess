@@ -8,8 +8,8 @@ app = FastAPI()
 
 # Replace with your App Service details
 APP_NAME = "oil-tank-refueling"
-USERNAME = "enginfo@citybus.com.hk"
-PASSWORD = "ESTS2026!"
+USERNAME = "oil-tank-refueling\$oil-tank-refueling"
+PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
 
 BASE_URL = f"https://oil-tank-refueling.scm.azurewebsites.net/api/vfs/home/"
 
