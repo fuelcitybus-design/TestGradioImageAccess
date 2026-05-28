@@ -187,69 +187,6 @@ def find_and_rename_image(current_name, new_name):
     except Exception as e:
         return None, f"💥 Connection error during rename operation: {str(e)}"
 
-# === Extract image and resize
-def fetch_resize_and_upload(filename, target_width, target_height):
-    if not filename or not filename.strip():
-        return None, "⚠️ Please enter a filename to resize."
-    
-    # Try to safely parse the numbers
-    try:
-        w = int(target_width)
-        h = int(target_height)
-    except ValueError:
-        return None, "⚠️ Width and Height must be valid whole numbers."
-        
-    if w <= 0 or h <= 0:
-        return None, "⚠️ Dimensions must be greater than zero."
-
-    filename = filename.strip()
-    url = f"https://{KUDU_HOST}/api/vfs/data/{filename}"
-    auth = HTTPBasicAuth(USERNAME, PASSWORD)
-    
-    try:
-        # 1. Download the original image from Azure
-        get_response = requests.get(url, auth=auth, timeout=30)
-        if get_response.status_code == 404:
-            return None, f"❌ File '{filename}' not found in data/."
-        elif get_response.status_code != 200:
-            return None, f"❌ Failed to fetch original file: HTTP {get_response.status_code}"
-            
-        # 2. Open the downloaded binary stream with Pillow
-        img = Image.open(io.BytesIO(get_response.content))
-        original_format = img.format or "JPEG" # Fallback if format isn't detected
-        
-        # 3. Resize the image (using high-quality Resampling)
-        # Note: If your Pillow version is older, use Image.ANTIALIAS instead of Image.Resampling.LANCZOS
-        resized_img = img.resize((w, h), Image.Resampling.LANCZOS)
-        
-        # 4. Save the resized image into a binary memory buffer
-        byte_arr = io.BytesIO()
-        resized_img.save(byte_arr, format=original_format)
-        resized_bytes = byte_arr.getvalue()
-        
-        # 5. Overwrite the file on Azure Kudu with the new resized bytes
-        put_headers = {"If-Match": "*"}
-        put_response = requests.put(
-            url, 
-            headers=put_headers, 
-            data=resized_bytes, 
-            auth=auth, 
-            timeout=30
-        )
-        
-        if put_response.status_code in:
-            # 6. Save a local temporary file to show a preview in Gradio
-            temp_local_path = f"temp_resized_{filename}"
-            with open(temp_local_path, "wb") as f:
-                f.write(resized_bytes)
-                
-            return temp_local_path, f"✅ Success! Resized '{filename}' to {w}x{h} px and updated Azure."
-        else:
-            return None, f"❌ Failed to upload resized image: HTTP {put_response.status_code}"
-            
-    except Exception as e:
-        return None, f"💥 Connection error during resizing: {str(e)}"
-
 
 # --- GRADIO INTERFACE SETUP ---
 with gr.Blocks(title="Azure Image Uploader") as demo:
@@ -347,32 +284,5 @@ with gr.Blocks(title="Azure Image Uploader") as demo:
             outputs=[renamed_image_display, rename_status]
         )
 
-    # Tab 5: Image Resizer
-    with gr.Tab("Resize Server Image"):
-        gr.Markdown("### 📐 Fetch and Resize an Existing Azure Image")
-        gr.Markdown("This downloads the image, resizes its dimensions via Pillow, and replaces the server copy.")
-        
-        with gr.Row():
-            resize_target_input = gr.Textbox(
-                label="Target Filename on Server", 
-                placeholder="e.g., banner.jpg"
-            )
-        with gr.Row():
-            width_input = gr.Number(label="New Width (px)", value=800, precision=0)
-            height_input = gr.Number(label="New Height (px)", value=600, precision=0)
-            
-        with gr.Row():
-            resize_btn = gr.Button("Resize and Update Cloud File", variant="primary")
-            
-        with gr.Row():
-            resized_display = gr.Image(label="Resized Image Preview", type="filepath")
-            resize_status = gr.Textbox(label="System Log", interactive=False)
-            
-        # Hook up the interface button pipeline
-        resize_btn.click(
-            fn=fetch_resize_and_upload,
-            inputs=[resize_target_input, width_input, height_input],
-            outputs=[resized_display, resize_status]
-        )
 
 app = gr.mount_gradio_app(app, demo, path="/")
