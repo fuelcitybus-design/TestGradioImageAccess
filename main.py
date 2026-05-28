@@ -50,26 +50,83 @@ def upload_image_to_kudu(image_path):
     except Exception as e:
         return f"💥 Connection error: {str(e)}"
 
+# === NEW SUBSECTION: SEARCH AND EXTRACT FOR DISPLAY ===
+def fetch_and_display_image(search_filename):
+    if not search_filename or not search_filename.strip():
+        return None, "⚠️ Please enter a filename to search."
+    
+    filename = search_filename.strip()
+    
+    # Target the file URL directly in Kudu VFS
+    url = f"https://{KUDU_HOST}/api/vfs/site/data/{filename}"
+    
+    try:
+        # Request the raw binary content of the file
+        response = requests.get(
+            url, 
+            auth=HTTPBasicAuth(USERNAME, PASSWORD),
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            # Create a local temporary file to cache the image for Gradio to display
+            temp_local_path = f"temp_downloaded_{filename}"
+            with open(temp_local_path, "wb") as f:
+                f.write(response.content)
+                
+            return temp_local_path, f"🔍 Found! Displaying '{filename}' from Azure."
+        
+        elif response.status_code == 404:
+            return None, f"❌ File '{filename}' not found in site/wwwroot/."
+        else:
+            return None, f"❌ Failed to fetch: HTTP {response.status_code}"
+            
+    except Exception as e:
+        return None, f"💥 Connection error: {str(e)}"
+
+
 # --- GRADIO INTERFACE SETUP ---
 with gr.Blocks(title="Azure Image Uploader") as demo:
     gr.Markdown("# 🌐 Azure App Service Image Deployer")
     gr.Markdown(f"Uploading files directly to regional host: `{KUDU_HOST}`")
     
-    with gr.Row():
-        image_input = gr.Image(type="filepath", label="Choose or Drop Image Here")
-        
-    with gr.Row():
-        submit_btn = gr.Button("Upload to Azure", variant="primary")
-        
-    with gr.Row():
-        output_text = gr.Textbox(label="Upload Status", interactive=False)
+     # Tab 1: Uploading & Renaming
+    with gr.Tab("Upload Images"):
+        with gr.Row():
+            image_input = gr.Image(type="filepath", label="Choose or Drop Image Here")
+        with gr.Row():
+            name_input = gr.Textbox(label="Custom File Name (Optional)", placeholder="e.g., banner")
+        with gr.Row():
+            upload_btn = gr.Button("Upload to Azure", variant="primary")
+        with gr.Row():
+            upload_output = gr.Textbox(label="Upload Status", interactive=False)
+            
+        upload_btn.click(
+            fn=upload_image_to_kudu,
+            inputs=[image_input, name_input],
+            outputs=upload_output
+        )
 
-    # Link button click to the upload function
-    submit_btn.click(
-        fn=upload_image_to_kudu,
-        inputs=image_input,
-        outputs=output_text
-    )
+    # Tab 2: New Search and Display System
+    with gr.Tab("Search & View Files"):
+        gr.Markdown("### 🔍 Fetch file from Azure storage")
+        with gr.Row():
+            search_input = gr.Textbox(
+                label="Enter Filename with Extension", 
+                placeholder="e.g., photo.jpg or banner.png"
+            )
+        with gr.Row():
+            search_btn = gr.Button("Search Kudu Storage", variant="secondary")
+        with gr.Row():
+            # Outputs: An image box to display it, and a text box for status reports
+            image_display = gr.Image(label="Extracted Image Result", type="filepath")
+            search_status = gr.Textbox(label="Search Status", interactive=False)
+            
+        search_btn.click(
+            fn=fetch_and_display_image,
+            inputs=search_input,
+            outputs=[image_display, search_status]
+        )
 
         
 app = gr.mount_gradio_app(app, demo, path="/")
