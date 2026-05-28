@@ -15,6 +15,8 @@ PASSWORD = "xrzqs40NcHhiqk1c2ukoTc4wTSoHHgFy77MjzRzsXlgkusz8uqhnd6KZ3tsR"
 KUDU_HOST = "oil-tank-refueling-e8a5atdqg9fnh2et.scm.eastasia-01.azurewebsites.net"
 # ---------------------
 
+IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg')
+
 def upload_image_to_kudu(image_path, custom_name):
     if not image_path:
         return "⚠️ Please select or drop an image first."
@@ -76,7 +78,7 @@ def fetch_and_display_image(search_filename):
 # === NEW SUBSECTION: FETCH ALL IMAGES FOR GALLERY VIEW ===
 def load_all_stored_images():
     # Kudu returns directory structure as JSON when hitting the root path
-    url = f"https://{KUDU_HOST}/api/vfs/site/wwwroot/"
+    url = f"https://{KUDU_HOST}/api/vfs/data/"
     
     # We will pass a list of tuples containing (local_file_path, caption) to Gradio Gallery
     gallery_items = []
