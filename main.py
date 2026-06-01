@@ -2,13 +2,15 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-
-
-
 from requests.auth import HTTPBasicAuth         # HTTP Basic auth for Kudu API
 import gradio as gr                             # Gradio UI framework
 import os                                       # Path operations (basename, path.join, makedirs, path.exists, path.splitext)
-import requests     
+import requests 
+
+import glob
+import numpy as np
+import cv2
+import re
 
 # --- CONFIGURATION ---
 # Replace these with your actual Azure App Service credentials
