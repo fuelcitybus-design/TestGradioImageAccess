@@ -7,7 +7,7 @@ import gradio as gr                             # Gradio UI framework
 import os                                       # Path operations (basename, path.join, makedirs, path.exists, path.splitext)
 import requests 
 
-import glob
+
 import numpy as np
 import cv2
 import re
