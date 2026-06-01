@@ -2,6 +2,8 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
+
+
 import os
 import base64
 import requests
@@ -9,6 +11,18 @@ from requests.auth import HTTPBasicAuth
 import gradio as gr
 from PIL import Image
 import io
+from pathlib import Path
+import glob
+import numpy as np
+import cv2
+from paddleocr import PaddleOCR
+import re
+
+from openpyxl import Workbook, load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
+from datetime import datetime
+
 
 # --- CONFIGURATION ---
 # Replace these with your actual Azure App Service credentials
