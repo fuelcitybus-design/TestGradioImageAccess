@@ -55,5 +55,5 @@ requests>=2.31.0
 Pillow>=10.0.0
 paddleocr==3.6.0
 opencv-python==4.9.0.80
-openxyl==3.1.5
+openpxyl==3.1.5
 
