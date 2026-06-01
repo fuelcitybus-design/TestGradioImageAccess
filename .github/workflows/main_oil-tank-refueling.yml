@@ -24,17 +24,25 @@ jobs:
         with:
           python-version: '3.11'
 
-      # 🛠️ Local Build Section (Optional)
-      # The following section in your workflow is designed to catch build issues early on the client side, before deployment. This can be helpful for debugging and validation. However, if this step significantly increases deployment time and early detection is not critical for your workflow, you may remove this section to streamline the deployment process.
+      # 🛠️ Local Build Section - Install dependencies with heavy package optimization
       - name: Create and Start virtual environment and Install dependencies
         run: |
           python -m venv antenv
           source antenv/bin/activate
-          pip install --upgrade pip setuptools wheel
-          pip install opencv-python paddleocr --no-cache-dir
+          python -m pip install --upgrade pip setuptools wheel
+          
+          # Install heavy dependencies first with optimizations
+          echo "Installing heavy dependencies..."
+          pip install --no-cache-dir --prefer-binary opencv-python==4.9.0.80
+          pip install --no-cache-dir --prefer-binary paddleocr==3.6.0
+          
+          # Install remaining dependencies from requirements.txt
+          echo "Installing remaining dependencies from requirements.txt..."
           pip install -r requirements.txt
+          
+          echo "Dependencies installation complete!"
                 
-      # By default, when you enable GitHub CI/CD integration through the Azure portal, the platform automatically sets the SCM_DO_BUILD_DURING_DEPLOYMENT application setting to true. This triggers the use of Oryx, a build engine that handles application compilation and dependency installation (e.g., pip install) directly on the platform during deployment. Hence, we exclude the antenv virtual environment directory from the deployment artifact to reduce the payload size. 
+      # Upload artifact for deployment jobs
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
