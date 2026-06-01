@@ -18,10 +18,6 @@ import cv2
 from paddleocr import PaddleOCR
 import re
 
-from openpyxl import Workbook, load_workbook
-from openpyxl.utils import get_column_letter
-from openpyxl.drawing.image import Image
-from datetime import datetime
 
 
 # --- CONFIGURATION ---
