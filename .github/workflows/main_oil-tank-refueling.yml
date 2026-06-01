@@ -31,13 +31,8 @@ jobs:
           source antenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           
-          # Install heavy dependencies first with optimizations
-          echo "Installing heavy dependencies..."
-          pip install --no-cache-dir --prefer-binary opencv-python==4.9.0.80
-          pip install --no-cache-dir --prefer-binary paddleocr==3.6.0
-          
-          # Install remaining dependencies from requirements.txt
-          echo "Installing remaining dependencies from requirements.txt..."
+          pip install opencv-python-headless
+          pip install paddleocr==3.6.0
           pip install -r requirements.txt
           
           echo "Dependencies installation complete!"
